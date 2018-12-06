@@ -9,7 +9,10 @@
         1. Coin counter (bar at top)
         2. Animation of dying (vanishing)
         3. Animation of coins dropping when you die
+        4. TIME DELAY BETWEEN SAME OBSTACLE
     
+As of now, we have 2 players (usual) and we have stars (which are supposed to be GPA +0.4) and 1 pikachu (which is the FAIL = restart and -0.5 GPA), and a counter of GPA.
+
 
 """
 add_library('minim')
@@ -57,9 +60,9 @@ class Creature:
     def display(self):
         self.update()
 
-        if isinstance (self, Koopa):
+        if isinstance (self, rGPA):
             self.f = (self.f+0.3)%self.F
-        elif isinstance (self, Star):
+        elif isinstance (self, rCM):
             self.f = (self.f+0.3)%self.F
         elif self.vx != 0: #If the character is moving, then we cycle through the frames
             self.f = (self.f+0.3)%self.F
@@ -82,6 +85,8 @@ class Player1(Creature):
         self.kill = player.loadFile(path+"/sounds/kill.mp3")
         self.gameover = player.loadFile(path+"/sounds/gameover.wav")
         self.star = player.loadFile(path+"/sounds/coin.mp3")
+        self.money=0 #Total CM of player
+        self.grade=0 #Total GPA of player
         self.ox=x
         self.oy=y
         
@@ -89,6 +94,17 @@ class Player1(Creature):
         self.gravity()
         if self.vy==0:
             self.wall=0
+            
+        if self.x-self.r<0: #Left Boundary wall condition
+            self.x=self.r
+            
+        if self.x+self.r>1440: #Right Boundary wall condition
+            self.x=1440-self.r
+            
+        if self.y<0: #Roof condition
+            self.y=self.r
+            self.vy=5
+            self.gravity()
         
         if self.keyHandler[LEFT] and self.wall==0:
             self.vx = -5
@@ -114,24 +130,55 @@ class Player1(Creature):
                 #self.wall=0
                 #self.vx=0
         
-        for e in game.enemies:
-            if self.cdistance(e) <= self.r + e.r:
-                # there is a collision
-                if self.vy > 0 and self.y < e.y:
-                    game.enemies.remove(e)
-                    del e
+        for t in game.oTrip:
+            if self.cdistance(t) <= self.r + t.r:
+                self.money=0
+                self.x=self.ox
+                self.y=self.oy
+                    
+        for f in game.oFail:
+            if self.cdistance(f) <= self.r + f.r:
+                self.grade-=0.5
+                self.x=self.ox
+                self.y=self.oy
+                    
+        for q in game.oQuiz:
+            if self.cdistance(q) <= self.r + q.r and q.flag==0:
+                self.grade-=0.2
+                q.flag==1
+                
+        for s in game.oStarbucks:
+            if self.cdistance(s) <= self.r + s.r and s.flag==0:
+                self.money-=150
+                s.flag==1
+                
+                    
+                """ KILLING OBSTACLES
+                if self.vy > 0 and self.y < t.y:
+                    game.otrip.remove(t)
+                    del t
                     self.kill.rewind()
                     self.kill.play()
                     self.vy = -8
                 else:
+                    self.money=0
                     self.x=self.ox
-                    self.y=self.oy
+                    self.y=self.oy"""
         
         
-        for s in game.stars:
-            if self.cdistance(s) <= self.r + s.r:
-                game.stars.remove(s)
-                del s
+        for m in game.CM:
+            if self.cdistance(m) <= self.r + m.r:
+                self.money+=50
+                game.CM.remove(m)
+                del m
+                self.star.rewind()
+                self.star.play()
+                
+        for g in game.GPA:
+            if self.cdistance(g) <= self.r + g.r:
+                self.grade+=0.4
+                game.GPA.remove(g)
+                del g
                 self.star.rewind()
                 self.star.play()
             
@@ -146,12 +193,26 @@ class Player2(Creature):
         self.kill = player.loadFile(path+"/sounds/kill.mp3")
         self.gameover = player.loadFile(path+"/sounds/gameover.wav")
         self.star = player.loadFile(path+"/sounds/coin.mp3")
+        self.money=0 #Total CM of player
+        self.grade=0 #Total GPA of player
         self.ox=x
         self.oy=y
     def update(self):
         self.gravity()
         if self.vy==0:
             self.wall=0
+            
+        if self.x-self.r<0: #Left Boundary wall condition
+            self.x=self.r
+            
+        if self.x+self.r>1440: #Right Boundary wall condition
+            self.x=1440-self.r
+        
+        if self.y<0: #Roof condition
+            self.y=self.r
+            self.vy=5
+            self.gravity()
+        
         
         if self.keyHandler['a'] and self.wall==0:
             self.vx = -5
@@ -169,52 +230,116 @@ class Player2(Creature):
         self.y += self.vy   
         
         for p in game.platforms:
-            if  self.x>=(p.x-20) and self.x<=(p.x+p.w+20) and self.y>=(p.y-10) and self.y<=(p.y+p.h+10):
+            if  self.x>=(p.x-20) and self.x<=(p.x+p.w+20) and self.y>=(p.y-10) and self.y<=(p.y+p.h+40):
+            #if  self.x+self.w>=(p.x) and self.x<=(p.x+p.w) and self.y+self.h>=(p.y) and self.y<=(p.y+p.h):
                 self.vy=7
                 self.vx=0
                 self.wall=1
         
-        for e in game.enemies:
-            if self.cdistance(e) <= self.r + e.r:
-                # there is a collision
-                if self.vy > 0 and self.y < e.y:
-                    game.enemies.remove(e)
-                    del e
+        for t in game.oTrip:
+            if self.cdistance(t) <= self.r + t.r:
+                self.money=0
+                self.x=self.ox
+                self.y=self.oy
+                    
+        for f in game.oFail:
+            if self.cdistance(f) <= self.r + f.r:
+                self.grade-=0.5
+                self.x=self.ox
+                self.y=self.oy
+                    
+        for q in game.oQuiz:
+            if self.cdistance(q) <= self.r + q.r and q.flag==0:
+                self.grade-=0.2
+                q.flag==1
+                
+        for s in game.oStarbucks:
+            if self.cdistance(s) <= self.r + s.r and s.flag==0:
+                self.money-=150
+                s.flag==1
+                
+                    
+                """ KILLING OBSTACLES
+                if self.vy > 0 and self.y < t.y:
+                    game.otrip.remove(t)
+                    del t
                     self.kill.rewind()
                     self.kill.play()
                     self.vy = -8
                 else:
+                    self.money=0
+                    self.x=self.ox
+                    self.y=self.oy"""
+        
+        
+        for m in game.CM:
+            if self.cdistance(m) <= self.r + m.r:
+                self.money+=50
+                game.CM.remove(m)
+                del m
+                self.star.rewind()
+                self.star.play()
+                
+        for g in game.GPA:
+            if self.cdistance(g) <= self.r + g.r:
+                self.grade+=0.4
+                game.GPA.remove(g)
+                del g
+                self.star.rewind()
+                self.star.play()
+        
+        """for o in game.obstacles:
+            if self.cdistance(o) <= self.r + o.r:
+                # there is a collision
+                if self.vy > 0 and self.y < o.y:
+                    game.obstacles.remove(o)
+                    del o
+                    self.kill.rewind()
+                    self.kill.play()
+                    self.vy = -8
+                else:
+                    self.GPA=0
                     self.x=self.ox
                     self.y=self.oy
         
-        for s in game.stars:
+        for s in game.CM:
             if self.cdistance(s) <= self.r + s.r:
-                game.stars.remove(s)
+                self.coins+=1
+                game.CM.remove(s)
                 del s
                 self.star.rewind()
-                self.star.play()
+                self.star.play()"""
             
         
     def cdistance(self,e): #COLLISION DETECTION
         return ((self.x-e.x)**2+(self.y-e.y)**2)**0.5 
     
-class Star(Creature):
+"""class rCM(Creature):
     def __init__(self,x,y,r,g,img,w,h,F):
         Creature.__init__(self,x,y,r,g,img,w,h,F)
         self.cx = x
         self.cy = y
         
     def gravity(self):
+        return"""
+    
+class rGPA(Creature):
+    def __init__(self,x,y,r,g,img,w,h,F):
+        Creature.__init__(self,x,y,r,g,img,w,h,F)
+        self.cx = x
+        self.cy = y #NO MOVEMENT
+        
+    def gravity(self):
         return
     
-class Koopa(Creature): #Creature unaffected by gravity
+class rCM(Creature): #Creature unaffected by gravity (FLYING)
     def __init__(self,x,y,r,g,img,w,h,F,y1,y2): #y1 and y2 are the vertical endpoints
         Creature.__init__(self,x,y,r,g,img,w,h,F)
         self.y1=y1
         self.y2=y2
         self.dir = -1
         
-    def update(self): #Giving endpoints for the creature to move between
+    def update(self): #Giving endpoints for the creature to move between (VERTICAL MOVEMENT)
         
         if self.y < self.y1:
             self.vy = 3
@@ -223,13 +348,96 @@ class Koopa(Creature): #Creature unaffected by gravity
             
         self.y += self.vy
         
-class Pikatshu(Creature):
+class Fail(Creature):
     def __init__(self,x,y,r,g,img,w,h,F,x1,x2): #x1 and x2 are the horizontal endpoints
         Creature.__init__(self,x,y,r,g,img,w,h,F)
         self.x1=x1
         self.x2=x2
         self.vx = 2
-        self.jump = player.loadFile(path+"/sounds/Pikachu.mp3")
+        #self.jump = player.loadFile(path+"/sounds/Pikachu.mp3")
+        
+    def update(self):
+        self.gravity()
+        
+        if self.x > self.x2:
+            self.vx = -2
+            self.dir = -1
+        elif self.x < self.x1:
+            self.vx = 2
+            self.dir = 1
+        
+        #Jumping functionality
+        """if int(random(100)) == 1 and self.y+self.r == self.g: #To randomly make some jump (will fall back down tho cuz gravity)
+            self.vy = -10
+            # self.jump.rewind()
+            # self.jump.play()"""
+        
+        self.x += self.vx
+        self.y += self.vy
+        
+class Trip(Creature):
+    def __init__(self,x,y,r,g,img,w,h,F,x1,x2): #x1 and x2 are the horizontal endpoints
+        Creature.__init__(self,x,y,r,g,img,w,h,F)
+        self.x1=x1
+        self.x2=x2
+        self.vx = 2
+        #self.jump = player.loadFile(path+"/sounds/Pikachu.mp3")
+        
+    def update(self):
+        self.gravity()
+        
+        if self.x > self.x2:
+            self.vx = -2
+            self.dir = -1
+        elif self.x < self.x1:
+            self.vx = 2
+            self.dir = 1
+        
+        #Jumping functionality
+        """if int(random(100)) == 1 and self.y+self.r == self.g: #To randomly make some jump (will fall back down tho cuz gravity)
+            self.vy = -10
+            # self.jump.rewind()
+            # self.jump.play()"""
+        
+        self.x += self.vx
+        self.y += self.vy
+        
+class Quiz(Creature):
+    def __init__(self,x,y,r,g,img,w,h,F,x1,x2): #x1 and x2 are the horizontal endpoints
+        Creature.__init__(self,x,y,r,g,img,w,h,F)
+        self.x1=x1
+        self.x2=x2
+        self.vx = 2
+        self.quiz=0
+        #self.jump = player.loadFile(path+"/sounds/Pikachu.mp3")
+        
+    def update(self):
+        self.gravity()
+        
+        if self.x > self.x2:
+            self.vx = -2
+            self.dir = -1
+        elif self.x < self.x1:
+            self.vx = 2
+            self.dir = 1
+        
+        #Jumping functionality
+        """if int(random(100)) == 1 and self.y+self.r == self.g: #To randomly make some jump (will fall back down tho cuz gravity)
+            self.vy = -10
+            # self.jump.rewind()
+            # self.jump.play()"""
+        
+        self.x += self.vx
+        self.y += self.vy
+        
+class Coffee(Creature):
+    def __init__(self,x,y,r,g,img,w,h,F,x1,x2): #x1 and x2 are the horizontal endpoints
+        Creature.__init__(self,x,y,r,g,img,w,h,F)
+        self.x1=x1
+        self.x2=x2
+        self.vx = 2
+        self.coffee=0
+        #self.jump = player.loadFile(path+"/sounds/Pikachu.mp3")
         
     def update(self):
         self.gravity()
@@ -269,6 +477,9 @@ class Game:
         self.h=h
         self.g=g
         
+        self.CMImg=loadImage(path+"/images/star.png")
+        self.GPAImg=loadImage(path+"/images/star.png")
+        
         self.pause = False
         #self.pauseSound = player.loadFile(path+"/sounds/pause.mp3")
         
@@ -281,17 +492,22 @@ class Game:
         
         self.p1 = Player1(50,668,35,self.g,"mario.png",100,70,11) #Player-1
         self.p2 = Player2(100,668,35,self.g,"mario.png",100,70,11) #Player-2
-        self.enemies = []
-        #for i in range(5):
-            #self.enemies.append(Pikatshu(250+i*100,50,42,self.g,"pikatshu.png",120,85,4,100,1000))
-        #self.enemies.append(Koopa(150,50,35,self.g,"koopa.png",70,70,8,200,500))
         
-        self.enemies.append(Pikatshu(50,100,42,self.g,"pikatshu.png",120,85,4,50,450))
+        self.oFail = [] #Fail that makes you restart position as well as reduces GPA by 0.5
+        self.oTrip = [] #Trip that makes you restart position as well as reduces CM to 0
+        self.oStarbucks = [] #Coffee cup that reduces your CM by 150
+        self.oQuiz = [] #Quiz paper that makes you lose your GPA by 0.4
+        
+        #for i in range(5):
+            #self.oFail.append(Fail(250+i*100,50,42,self.g,"fail.png",120,85,4,100,1000))
+        #self.oFail.append(Koopa(150,50,35,self.g,"koopa.png",70,70,8,200,500))
+        
+        self.oFail.append(Fail(50,100,42,self.g,"pikatshu.png",120,85,4,50,450))
         
         self.platforms=[]
         #for i in range(3):
         self.platforms.append(Platform(0,150,1216,50)) #Platform-3
-        self.platforms.append(Platform(400,350,1016,50)) #Platform-2
+        self.platforms.append(Platform(400,350,1100,50)) #Platform-2
         self.platforms.append(Platform(0,550,1216,50)) #Platform-1
         
         self.platforms.append(Platform(-299,0,300,768)) #WALLS
@@ -299,12 +515,15 @@ class Game:
         
         self.platforms.append(Platform(0,718,1440,50)) #Ground
         
-        self.stars = [] #STARS
-        for i in range(5):
-            self.stars.append(Star(50+i*50,120,20,self.g,"star.png",40,40,6))
-        for i in range(5):
-            self.stars.append(Star(250+i*50,270,20,self.g,"star.png",40,40,6))
+        self.CM = [] #Campus Money 
+        self.GPA = [] #GPA
         
+        for i in range(5):
+            self.GPA.append(rGPA(50+i*50,120,20,self.g,"star.png",40,40,6)) #GPA hat objects (NO MOVEMENT)
+        for i in range(5):
+            self.GPA.append(rGPA(250+i*50,270,20,self.g,"star.png",40,40,6))
+        
+        self.CM.append(rCM(300,275,20,self.g,"star.png",40,40,6,300,500)) #Campus money objects (y1=top height limit, y2=bottom height limit)
         
     def display(self):
         stroke(255)
@@ -317,22 +536,48 @@ class Game:
             image(img,self.w-x-1,0)
             cnt-=1"""
             
-        for p in self.platforms:
+        for p in self.platforms: #Displaying Platforms
             p.display()
-        
-        for e in self.enemies:
-            e.display() 
             
-        for s in self.stars: #STAR DISPLAY
+        for f in self.oFail: #Displaying Fail restarts
+            f.display()
+            
+        for t in self.oTrip: #Displaying Holiday Trip restarts
+            t.display()
+            
+        for s in self.oStarbucks: #Displaying Starbucks cups
             s.display()
+            
+        for q in self.oQuiz: #Displaying Quiz papers
+            q.display()
+        
+        for g in self.GPA: #Displaying GPA hats
+            g.display() 
+            
+        for m in self.CM: #Displaying Campus Money
+            m.display()
                
         self.p1.display()
         self.p2.display()
         
-        """fill(255,0,0) STAR COUNTER
-        rect(30,30,100,20)
-        fill(255,255,0)
-        rect(30,30,min(100,self.mario.starsCnt*10),20)"""
+        """textSize(20) #Campus Money Counter
+        fill(255) 
+        text("P1 -"+str(self.p1.money),game.w-100,40)
+        text("P2 -"+str(self.p2.money),game.w-100,75)
+        image(self.CMImg,game.w-35,23, 20,20, 0,0, 40,40)
+        image(self.CMImg,game.w-35,57, 20,20, 0,0, 40,40)"""
+        
+        textSize(20) #GPA Counter
+        fill(255) 
+        text("P1 -"+str(self.p1.grade),game.w-100,40)
+        text("P2 -"+str(self.p2.grade),game.w-100,75)
+        image(self.GPAImg,game.w-35,23, 20,20, 0,0, 40,40)
+        image(self.GPAImg,game.w-35,57, 20,20, 0,0, 40,40)
+        
+        
+        #rect(30,30,100,20)
+        #fill(255,255,0)
+        #rect(30,30,min(100,self.mario.CMCnt*10),20)
         
 game = Game(1440,768,718) #Window dimensions and the ground value
 
