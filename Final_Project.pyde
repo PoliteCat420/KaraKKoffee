@@ -1,15 +1,20 @@
 """ERRORS:
-    1. (wall issue) Doesn't block wall if your y velocity is 0 (only moving horizontally on the ground), this is due to our condition to self.wall=0 only when self.vy==0 (so can walk through walls)
+    1. [DONE] (wall issue) Doesn't block wall if your y velocity is 0 (only moving horizontally on the ground), this is due to our condition to self.wall=0 only when self.vy==0 (so can walk through walls)
 
     Suggestions:
         1. Want to implement a time delay between touching the obstacle and restarting
         2. Some bonus for certain amount of coins collected (like fireball in class)
         
     To-Do:
-        1. Coin counter (bar at top)
-        2. Animation of dying (vanishing)
-        3. Animation of coins dropping when you die
-        4. TIME DELAY BETWEEN SAME OBSTACLE
+        1. [DONE] CM counter (bar at top)
+        2. [DONE] Animation of coins dropping when you die
+        3. [DONE] TIME DELAY BETWEEN SAME OBSTACLE
+        4. Animation of dying (vanishing)
+        5. Add doors at end
+        6. Design 2 levels
+        7. Add background images
+        8. Add feature (unity) for final level
+        9. Design Menu (Play game + Instructions)
     
 As of now, we have 2 players (usual) and we have stars (which are supposed to be GPA +0.4) and 1 pikachu (which is the FAIL = restart and -0.5 GPA), and a counter of GPA.
 
@@ -60,20 +65,30 @@ class Creature:
     def display(self):
         self.update()
 
+#Write these with "in [...]" ?
         if isinstance (self, rGPA):
-            self.f = (self.f+0.3)%self.F
+            self.f = 1
         elif isinstance (self, rCM):
-            self.f = (self.f+0.3)%self.F
+            self.f = 1
+        elif isinstance (self, Fail):
+            self.f = 1
+        elif isinstance (self, Trip):
+            self.f = 1
         elif self.vx != 0: #If the character is moving, then we cycle through the frames
             self.f = (self.f+0.3)%self.F
         else:
-            self.f = 3 #Else we keep the same (stationary) frame
+            self.f = 3 #Else we keep the same (stationary) frame (ONLY WORKS FOR MARIO TEMPLATE SINCE f=3 IS STATIONARY THERE)
             
-        if self.dir > 0:
+        #if self.dir >0 and isinstance (self, Trip):
+        
+        if self.dir >0 and self.F>1:
             image(self.img,self.x-self.w//2,self.y-self.h//2,self.w,self.h,int(self.f)*self.w,0,int(self.f+1)*self.w,self.h) #int(self.f)*self.w, means to choose the x,y coords of the entire image (all frames) corresponding to which frame we need
-        elif self.dir < 0:
+        elif self.dir < 0 and self.F>1:
             image(self.img,self.x-self.w//2,self.y-self.h//2,self.w,self.h,int(self.f+1)*self.w,0,int(self.f)*self.w,self.h) #switching x1 with x2 and y1 with y2, to flip the image horizontally
-            
+        elif self.dir >0 and self.F==1:
+            image(self.img,self.x-self.w//2,self.y-self.h//2, self.w,self.h)#, 0,0, self.w,self.h) FLIPPING IMAGES!!!
+        elif self.dir < 0 and self.F==1:
+            image(self.img,self.x-self.w//2,self.y-self.h//2, self.w,self.h)#, self.w,0, 0,self.h)
         # stroke(255)
         # noFill()
         # ellipse(self.x,self.y,2*self.r,2*self.r)
@@ -87,6 +102,12 @@ class Player1(Creature):
         self.star = player.loadFile(path+"/sounds/coin.mp3")
         self.money=0 #Total CM of player
         self.grade=0 #Total GPA of player
+        self.fail=0 #Flag for fail object of P1
+        self.trip=0 #Flag of trip object of P1
+        self.quiz=0 #Flag of quiz object of P1
+        self.GPA=0 #Flag of gpa object of P1
+        self.coffee=0 #Flag of coffee object of P1
+        self.CM=0 #Flag of money object of P1
         self.ox=x
         self.oy=y
         
@@ -131,26 +152,39 @@ class Player1(Creature):
                 #self.vx=0
         
         for t in game.oTrip:
-            if self.cdistance(t) <= self.r + t.r:
+            if self.cdistance(t) <= self.r + t.r and self.trip==0:
+                bags=self.money #Amount of money player had before touching 
+                grav=self.g
                 self.money=0
+                num=(bags//50) #Calculating the number of money objects corresponding to money lost
+                for i in range (num-(num//2)): #Making half of money objects fall on right
+                    game.CM.append(rCM(self.x+(70*(i+1)),self.y+20,20,grav,"Money.png",40,40,1,self.y,self.y,0)) #Appending money objects to display at point of character
+                for i in range (num//2): #Making half of money objects fall on left
+                    game.CM.append(rCM(self.x-(70*i),self.y+20,20,grav,"Money.png",40,40,1,self.y,self.y,0)) #Appending money objects to display at point of character
                 self.x=self.ox
                 self.y=self.oy
+                #self.trip=1
                     
         for f in game.oFail:
-            if self.cdistance(f) <= self.r + f.r:
+            if self.cdistance(f) <= self.r + f.r and self.fail==0:
                 self.grade-=0.5
                 self.x=self.ox
                 self.y=self.oy
+                #self.fail=1
                     
         for q in game.oQuiz:
-            if self.cdistance(q) <= self.r + q.r and q.flag==0:
+            if self.cdistance(q) <= self.r + q.r and self.quiz==0:
                 self.grade-=0.2
-                q.flag==1
+                self.quiz=1
+            if self.cdistance(q) > self.r + q.r:
+                self.quiz=0
                 
         for s in game.oStarbucks:
-            if self.cdistance(s) <= self.r + s.r and s.flag==0:
+            if self.cdistance(s) <= self.r + s.r and self.coffee==0:
                 self.money-=150
-                s.flag==1
+                self.coffee=1
+            if self.cdistance(s) > self.r + s.r:
+                self.coffee=0
                 
                     
                 """ KILLING OBSTACLES
@@ -195,6 +229,12 @@ class Player2(Creature):
         self.star = player.loadFile(path+"/sounds/coin.mp3")
         self.money=0 #Total CM of player
         self.grade=0 #Total GPA of player
+        self.fail=0 #Flag of fail object of P2
+        self.trip=0 #Flag of trip object of P2
+        self.quiz=0 #Flag of quiz object of P2
+        self.GPA=0 #Flag of gpa object of P2
+        self.coffee=0 #Flag of coffee object of P2
+        self.CM=0 #Flag of money object of P2
         self.ox=x
         self.oy=y
     def update(self):
@@ -237,26 +277,39 @@ class Player2(Creature):
                 self.wall=1
         
         for t in game.oTrip:
-            if self.cdistance(t) <= self.r + t.r:
+            if self.cdistance(t) <= self.r + t.r and self.trip==0:
+                bags=self.money #Amount of money player had before touching 
+                grav=self.g
                 self.money=0
+                num=(bags//50) #Calculating the number of money objects corresponding to money lost
+                for i in range (num-(num//2)): #Making half of money objects fall on right
+                    game.CM.append(rCM(self.x+(70*(i+1)),self.y+20,20,grav,"Money.png",40,40,1,self.y,self.y,0)) #Appending money objects to display at point of character
+                for i in range (num//2): #Making half of money objects fall on left
+                    game.CM.append(rCM(self.x-(70*i),self.y+20,20,grav,"Money.png",40,40,1,self.y,self.y,0)) #Appending money objects to display at point of character
                 self.x=self.ox
                 self.y=self.oy
+                #self.trip=1
                     
         for f in game.oFail:
-            if self.cdistance(f) <= self.r + f.r:
+            if self.cdistance(f) <= self.r + f.r and f.fail==0:
                 self.grade-=0.5
                 self.x=self.ox
                 self.y=self.oy
+                #self.fail=1
                     
         for q in game.oQuiz:
-            if self.cdistance(q) <= self.r + q.r and q.flag==0:
+            if self.cdistance(q) <= self.r + q.r and self.quiz==0:
                 self.grade-=0.2
-                q.flag==1
+                self.quiz=1
+            if self.cdistance(q) > self.r + q.r:
+                self.quiz=0
                 
         for s in game.oStarbucks:
-            if self.cdistance(s) <= self.r + s.r and s.flag==0:
+            if self.cdistance(s) <= self.r + s.r and self.coffee==0:
                 self.money-=150
-                s.flag==1
+                self.coffee=1
+            if self.cdistance(s) > self.r + s.r:
+                self.coffee=0
                 
                     
                 """ KILLING OBSTACLES
@@ -328,23 +381,30 @@ class rGPA(Creature):
         Creature.__init__(self,x,y,r,g,img,w,h,F)
         self.cx = x
         self.cy = y #NO MOVEMENT
+        #self.gpa=0
         
     def gravity(self):
         return
     
 class rCM(Creature): #Creature unaffected by gravity (FLYING)
-    def __init__(self,x,y,r,g,img,w,h,F,y1,y2): #y1 and y2 are the vertical endpoints
+    def __init__(self,x,y,r,g,img,w,h,F,y1,y2,move): #y1 and y2 are the vertical endpoints
         Creature.__init__(self,x,y,r,g,img,w,h,F)
         self.y1=y1
         self.y2=y2
         self.dir = -1
+        self.move=move
+        #self.money=0
         
     def update(self): #Giving endpoints for the creature to move between (VERTICAL MOVEMENT)
         
-        if self.y < self.y1:
-            self.vy = 3
-        elif self.y > self.y2:
-            self.vy = -3
+        if self.move==1:
+            if self.y < self.y1:
+                self.vy = 3
+            elif self.y > self.y2:
+                self.vy = -3
+            
+        elif self.move==0:
+            self.vy=0
             
         self.y += self.vy
         
@@ -354,6 +414,7 @@ class Fail(Creature):
         self.x1=x1
         self.x2=x2
         self.vx = 2
+        #self.fail=0
         #self.jump = player.loadFile(path+"/sounds/Pikachu.mp3")
         
     def update(self):
@@ -381,6 +442,7 @@ class Trip(Creature):
         self.x1=x1
         self.x2=x2
         self.vx = 2
+        #self.trip=0
         #self.jump = player.loadFile(path+"/sounds/Pikachu.mp3")
         
     def update(self):
@@ -408,7 +470,7 @@ class Quiz(Creature):
         self.x1=x1
         self.x2=x2
         self.vx = 2
-        self.quiz=0
+        #self.quiz=0
         #self.jump = player.loadFile(path+"/sounds/Pikachu.mp3")
         
     def update(self):
@@ -436,7 +498,7 @@ class Coffee(Creature):
         self.x1=x1
         self.x2=x2
         self.vx = 2
-        self.coffee=0
+        #self.coffee=0
         #self.jump = player.loadFile(path+"/sounds/Pikachu.mp3")
         
     def update(self):
@@ -477,8 +539,8 @@ class Game:
         self.h=h
         self.g=g
         
-        self.CMImg=loadImage(path+"/images/star.png")
-        self.GPAImg=loadImage(path+"/images/star.png")
+        self.CMImg=loadImage(path+"/images/Money.png")
+        self.GPAImg=loadImage(path+"/images/GPA.png")
         
         self.pause = False
         #self.pauseSound = player.loadFile(path+"/sounds/pause.mp3")
@@ -502,7 +564,7 @@ class Game:
             #self.oFail.append(Fail(250+i*100,50,42,self.g,"fail.png",120,85,4,100,1000))
         #self.oFail.append(Koopa(150,50,35,self.g,"koopa.png",70,70,8,200,500))
         
-        self.oFail.append(Fail(50,100,42,self.g,"pikatshu.png",120,85,4,50,450))
+        #self.oFail.append(Fail(50,100,42,self.g,"Fail.png",50,50,1,50,450)) #Creating Fail objects
         
         self.platforms=[]
         #for i in range(3):
@@ -519,11 +581,17 @@ class Game:
         self.GPA = [] #GPA
         
         for i in range(5):
-            self.GPA.append(rGPA(50+i*50,120,20,self.g,"star.png",40,40,6)) #GPA hat objects (NO MOVEMENT)
+            self.GPA.append(rGPA(50+i*60,120,20,self.g,"GPA.png",50,50,1)) #GPA hat objects (NO MOVEMENT)
         for i in range(5):
-            self.GPA.append(rGPA(250+i*50,270,20,self.g,"star.png",40,40,6))
+            self.GPA.append(rGPA(250+i*60,270,20,self.g,"GPA.png",50,50,1))
         
-        self.CM.append(rCM(300,275,20,self.g,"star.png",40,40,6,300,500)) #Campus money objects (y1=top height limit, y2=bottom height limit)
+        self.CM.append(rCM(300,275,20,self.g,"Money.png",40,40,1,300,500,1)) #Campus money objects (y1=top height limit, y2=bottom height limit, last argument is move: =1 for vertical movement, =0 for no vertical movement)
+        self.CM.append(rCM(300,250,20,self.g,"Money.png",40,40,1,300,500,1))
+        self.CM.append(rCM(300,225,20,self.g,"Money.png",40,40,1,300,500,1))
+        
+        #self.oQuiz.append(Quiz(200,80,20,self.g,"Quiz.png",50,50,1,100,300)) #Creating quiz objects
+        
+        self.oTrip.append(Trip(50,100,42,self.g,"Trip.png",75,75,1,50,450)) #Creating Trip objects
         
     def display(self):
         stroke(255)
@@ -562,18 +630,31 @@ class Game:
         
         """textSize(20) #Campus Money Counter
         fill(255) 
-        text("P1 -"+str(self.p1.money),game.w-100,40)
-        text("P2 -"+str(self.p2.money),game.w-100,75)
-        image(self.CMImg,game.w-35,23, 20,20, 0,0, 40,40)
-        image(self.CMImg,game.w-35,57, 20,20, 0,0, 40,40)"""
+        text("P1:"+str(self.p1.money),game.w-150,40)
+        text("P2:"+str(self.p2.money),game.w-150,110)
+        image(self.CMImg,game.w-35,23, 20,20)
+        image(self.CMImg,game.w-35,57, 20,20)
         
         textSize(20) #GPA Counter
         fill(255) 
-        text("P1 -"+str(self.p1.grade),game.w-100,40)
-        text("P2 -"+str(self.p2.grade),game.w-100,75)
-        image(self.GPAImg,game.w-35,23, 20,20, 0,0, 40,40)
-        image(self.GPAImg,game.w-35,57, 20,20, 0,0, 40,40)
+        text(str(self.p1.grade),game.w-145,75)
+        text(str(self.p2.grade),game.w-145,145)
+        image(self.GPAImg,game.w-35,23, 20,20)
+        image(self.GPAImg,game.w-35,57, 20,20)"""
         
+        
+        textSize(20) #Counters
+        fill(255)
+        image(self.CMImg,game.w-35,23, 20,20) #Player-1 Money counter
+        text("P1:"+str(self.p1.money),game.w-150,40)
+        image(self.GPAImg,game.w-35,55, 20,20) #Player-1 GPA counter
+        text(str(self.p1.grade),game.w-120,75)
+        image(self.CMImg,game.w-35,93, 20,20) #Player-2 Money counter
+        text("P2:"+str(self.p2.money),game.w-150,110)
+        image(self.GPAImg,game.w-35,127, 20,20) #Player-2 GPA counter
+        text(str(self.p2.grade),game.w-120,145)
+        """image(self.CMImg,game.w-35,23, 20,20)
+        image(self.CMImg,game.w-35,57, 20,20)"""
         
         #rect(30,30,100,20)
         #fill(255,255,0)
