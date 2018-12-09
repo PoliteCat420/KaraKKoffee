@@ -1,6 +1,9 @@
 """ERRORS:
     1. [DONE] (wall issue) Doesn't block wall if your y velocity is 0 (only moving horizontally on the ground), this is due to our condition to self.wall=0 only when self.vy==0 (so can walk through walls)
-
+    2. [SORTA DONE] Door doesn't detect players (in player class, it says that it does'nt exist in self.players)
+    3. 1 of the GPA objects still remains!!!
+    
+    
     Suggestions:
         1. Want to implement a time delay between touching the obstacle and restarting
         2. Some bonus for certain amount of coins collected (like fireball in class)
@@ -10,11 +13,14 @@
         2. [DONE] Animation of coins dropping when you die
         3. [DONE] TIME DELAY BETWEEN SAME OBSTACLE
         4. Animation of dying (vanishing)
-        5. Add doors at end
+        5. [DONE] Add doors at end
         6. Design 2 levels
-        7. Add background images
+        7. [SORTA DONE] Add background images
         8. Add feature (unity) for final level
-        9. Design Menu (Play game + Instructions)
+        9. [SORTA DONE] Design Menu (Play game + Instructions)
+        
+    Doubts:
+        1. Is it fine if we use Mario code
     
 As of now, we have 2 players (usual) and we have stars (which are supposed to be GPA +0.4) and 1 pikachu (which is the FAIL = restart and -0.5 GPA), and a counter of GPA.
 
@@ -110,6 +116,7 @@ class Player1(Creature):
         self.CM=0 #Flag of money object of P1
         self.ox=x
         self.oy=y
+        self.dead = False
         
     def update(self):
         self.gravity()
@@ -216,6 +223,11 @@ class Player1(Creature):
                 self.star.rewind()
                 self.star.play()
             
+        if self.x>=(game.door.x-20) and self.x<=(game.door.x+game.door.w+20) and self.y>=(game.door.y-10) and self.y<=(game.door.y+game.door.h+40):
+            self.dead = True
+            game.alive_players-=1
+        
+
         
     def cdistance(self,e): #COLLISION DETECTION
         return ((self.x-e.x)**2+(self.y-e.y)**2)**0.5
@@ -237,6 +249,8 @@ class Player2(Creature):
         self.CM=0 #Flag of money object of P2
         self.ox=x
         self.oy=y
+        self.dead = False
+        
     def update(self):
         self.gravity()
         if self.vy==0:
@@ -340,6 +354,13 @@ class Player2(Creature):
                 del g
                 self.star.rewind()
                 self.star.play()
+        
+        if self.x>=(game.door.x-20) and self.x<=(game.door.x+game.door.w+20) and self.y>=(game.door.y-10) and self.y<=(game.door.y+game.door.h+40):
+            self.dead = True
+            game.alive_players-=1
+        
+        """if self.x>=(game.door.x-20) and self.x<=(game.door.x+game.door.w+20) and self.y>=(game.door.y-10) and self.y<=(game.door.y+game.door.h+40):
+            game.players.remove(self)"""
         
         """for o in game.obstacles:
             if self.cdistance(o) <= self.r + o.r:
@@ -532,6 +553,19 @@ class Platform:
         rect(self.x,self.y,self.w,self.h)
         #image(self.img,self.x,self.y,self.w,self.h)
         
+class Door:
+    def __init__(self,x,y,w,h):
+        self.x=x
+        self.y=y
+        self.w=w
+        self.h=h
+        self.img = loadImage(path+"/images/Door.png")
+        self.d=1
+        
+    def display(self):
+        rect(self.x,self.y,self.w,self.h)
+        #image(self.img,self.x,self.y,self.w,self.h)
+        
             
 class Game:
     def __init__ (self,w,h,g): #width, height and ground of the game board
@@ -541,69 +575,131 @@ class Game:
         
         self.CMImg=loadImage(path+"/images/Money.png")
         self.GPAImg=loadImage(path+"/images/GPA.png")
+        self.instImg=loadImage(path+"/images/Inst.png") #INSERT THE SCREENSHOT HERE
         
+        self.state = "menu"
+        self.level=1
         self.pause = False
-        #self.pauseSound = player.loadFile(path+"/sounds/pause.mp3")
+        self.pauseSound = player.loadFile(path+"/sounds/pause.mp3")
         
-        #self.music = player.loadFile(path+"/sounds/music.mp3")
-        #self.music.play()
+        self.music = player.loadFile(path+"/sounds/music.mp3")
+        self.music.play()
         
-        """self.bgImgs=[] BACKGROUND IMAGES
-        for i in range(5,0,-1):
-            self.bgImgs.append(loadImage(path+"/images/layer_0"+str(i)+".png"))"""
+        self.BGImg=loadImage(path+"/images/BG"+str(self.level)+".jpg")
         
-        self.p1 = Player1(50,668,35,self.g,"mario.png",100,70,11) #Player-1
-        self.p2 = Player2(100,668,35,self.g,"mario.png",100,70,11) #Player-2
         
         self.oFail = [] #Fail that makes you restart position as well as reduces GPA by 0.5
         self.oTrip = [] #Trip that makes you restart position as well as reduces CM to 0
         self.oStarbucks = [] #Coffee cup that reduces your CM by 150
         self.oQuiz = [] #Quiz paper that makes you lose your GPA by 0.4
-        
-        #for i in range(5):
-            #self.oFail.append(Fail(250+i*100,50,42,self.g,"fail.png",120,85,4,100,1000))
-        #self.oFail.append(Koopa(150,50,35,self.g,"koopa.png",70,70,8,200,500))
-        
-        #self.oFail.append(Fail(50,100,42,self.g,"Fail.png",50,50,1,50,450)) #Creating Fail objects
-        
+        self.CM = [] #Campus Money 
+        self.GPA = [] #GPA
         self.platforms=[]
+        self.door=[]
+        self.players=[]
+        self.alive_players = 2
         #for i in range(3):
+            
+        if self.level==1:
+            self.lvl1()
+            # if self.alive_players==0:
+            #     self.level=2
+        elif self.level==2:
+            self.DelObject()
+            self.lvl2()
+            # if self.alive_players==0:
+            #     self.level=3
+        elif self.level==3:
+            self.DelObject()
+            self.lvl3()
+     
+    def lvl1(self):
+        self.p1 = Player1(50,668,35,self.g,"mario.png",100,70,11) #Player-1
+        self.p2 = Player2(100,668,35,self.g,"mario.png",100,70,11) #Player-2
+        
+        self.players.append(self.p1)
+        self.players.append(self.p2)
+        #print(len(self.players))
+        
+                
         self.platforms.append(Platform(0,150,1216,50)) #Platform-3
         self.platforms.append(Platform(400,350,1100,50)) #Platform-2
         self.platforms.append(Platform(0,550,1216,50)) #Platform-1
-        
+                
         self.platforms.append(Platform(-299,0,300,768)) #WALLS
         self.platforms.append(Platform(1439,0,300,768))
-        
+                
         self.platforms.append(Platform(0,718,1440,50)) #Ground
         
-        self.CM = [] #Campus Money 
-        self.GPA = [] #GPA
-        
+        self.door=Door(400,50,50,80) #Door
+    
         for i in range(5):
             self.GPA.append(rGPA(50+i*60,120,20,self.g,"GPA.png",50,50,1)) #GPA hat objects (NO MOVEMENT)
         for i in range(5):
             self.GPA.append(rGPA(250+i*60,270,20,self.g,"GPA.png",50,50,1))
-        
+                
         self.CM.append(rCM(300,275,20,self.g,"Money.png",40,40,1,300,500,1)) #Campus money objects (y1=top height limit, y2=bottom height limit, last argument is move: =1 for vertical movement, =0 for no vertical movement)
         self.CM.append(rCM(300,250,20,self.g,"Money.png",40,40,1,300,500,1))
         self.CM.append(rCM(300,225,20,self.g,"Money.png",40,40,1,300,500,1))
         
-        #self.oQuiz.append(Quiz(200,80,20,self.g,"Quiz.png",50,50,1,100,300)) #Creating quiz objects
+        self.oStarbucks.append(Quiz(100,100,20,self.g,"Coffee.png",30,40,1,100,500))
         
+        #self.oQuiz.append(Quiz(200,80,20,self.g,"Quiz.png",50,50,1,100,300)) #Creating quiz objects
+                
         self.oTrip.append(Trip(50,100,42,self.g,"Trip.png",75,75,1,50,450)) #Creating Trip objects
+        #self.oFail.append(Fail(50,100,42,self.g,"Fail.png",50,50,1,50,450)) #Creating Fail objects  
+        
+    
+    def DelObject(self):
+        for i in self.oFail:
+            self.oFail.remove(i)
+        for i in self.oTrip:
+            self.oTrip.remove(i)
+        for i in self.oStarbucks:
+            self.oStarbucks.remove(i)
+        for i in self.oQuiz:
+            self.oQuiz.remove(i)
+        for i in self.CM:
+            self.CM.remove(i)
+        for i in self.GPA:
+            self.GPA.remove(i)
+        for i in self.platforms:
+            self.platforms.remove(i)
+        self.door.d=0
+        
+        
+    def instDisp(self):
+        background(255)
+        image(self.instImg,-75,-50,1400,700) #INSERT THE SCREENSHOT
+        
+    def update(self):
+        if self.level==1 and self.alive_players==0:
+            self.level=2
+            self.DelObject()
+            pass #UNSURE
+            #self.lvl2()
+        elif self.level==2 and self.alive_players==0:
+            self.level=3
+            self.DelObject()
+            pass #UNSURE
+            #self.lvl3()
         
     def display(self):
+        
+        self.update()
+        
         stroke(255)
         #line(0,self.g,self.w,self.g)
         
-        """cnt = 5 BACKGROUND IMAGES
-        for img in self.bgImgs:
-            x = (game.x//cnt)%game.w
-            image(img,0-x,0)
-            image(img,self.w-x-1,0)
-            cnt-=1"""
-            
+        #BACKGROUND IMAGES
+        image(self.BGImg,0,0,self.w,self.h)
+        
+        
+        # BIT OF A HACK
+        # 1 player alive: set self.alive_players = 1
+        # two players alive: set it to 2
+        # use this instead of the list len
+        
         for p in self.platforms: #Displaying Platforms
             p.display()
             
@@ -625,8 +721,13 @@ class Game:
         for m in self.CM: #Displaying Campus Money
             m.display()
                
-        self.p1.display()
-        self.p2.display()
+        if self.door.d==1:
+            self.door.display()
+        
+        if self.p1.dead == False:
+            self.p1.display()
+        if self.p2.dead == False:
+            self.p2.display()
         
         """textSize(20) #Campus Money Counter
         fill(255) 
@@ -666,14 +767,66 @@ def setup():
     size(game.w, game.h)
     background(0)
     
+    
 def draw():
-    if game.pause == False:
+    
+    if game.state == "menu":
+        background(0)
+        textSize(34)
+        # fill(255)
+        # rect(game.w//2.5, game.h//3, 200, 50)
+        # fill(255)
+        # rect(game.w//2.5, game.h//3+100, 200, 50)
+        
+        if game.w//2.5 < mouseX < game.w//2.5 + 200 and game.h//3 < mouseY < game.h//3 + 50:
+            fill(255,0,0)
+        else:
+            fill(255)
+        text("Play Game", game.w//2.5, game.h//3+40)
+        if game.w//2.5 < mouseX < game.w//2.5 + 200 and game.h//3+100 < mouseY < game.h//3 + 150:
+            fill(255,0,0)
+        else:
+            fill(255)
+        text("Instructions", game.w//2.5, game.h//3+140)
+        
+    elif game.state == "play":
+        if game.pause == True:
+            textSize(70)
+            fill(255)
+            rect(game.w//3,100,50,50)
+            fill(0,255,255)
+            text("Paused",game.w//3,100)
+        
+        else:
+            background(0)
+            game.display()
+            
+    elif game.state == "inst":
+        if not game.pause:
+            game.instDisp()
+            if game.w//2.5-20 < mouseX < game.w//2.5 + 180 and game.h-135 < mouseY < game.h-85: #Use same ratios, but diff positions according to image used
+                fill(255,0,0)
+            else:
+                fill(0)
+            text("Play Game!", game.w//2.5, game.h-100)
+            
+    """elif game.pause == False:
         background(0)
         game.display()
-    else:
+    elif game.pause == True:
         textSize(70)
-        fill(0,255,255)
-        text("Paused",game.w//2,game.h//2)
+        fill(0)
+        text("Paused",game.w//2,game.h//2)"""
+        
+def mouseClicked():
+    if game.state=="menu" and game.w//2.5 < mouseX < game.w//2.5 + 200 and game.h//3 < mouseY < game.h//3 + 50:
+        game.state="play"
+        game.music.play()
+    elif game.state=="menu" and game.w//2.5 < mouseX < game.w//2.5 + 200 and game.h//3+100 < mouseY < game.h//3 + 150:
+        game.state="inst"
+    elif game.state=="inst" and game.w//2.5-20 < mouseX < game.w//2.5 + 180 and game.h-135 < mouseY < game.h-85:
+        game.state="play"
+        game.music.play()
     
 def keyPressed():
     if keyCode == LEFT:
@@ -690,8 +843,8 @@ def keyPressed():
         game.p2.keyHandler['w']=True
     elif key in ['p','P']: #Pause functions
         game.pause = not game.pause
-        #game.pauseSound.rewind()
-        #game.pauseSound.play()
+        game.pauseSound.rewind()
+        game.pauseSound.play()
         
         if game.pause == True:
             game.music.pause()
