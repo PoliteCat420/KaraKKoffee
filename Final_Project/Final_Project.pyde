@@ -1,8 +1,8 @@
 """ERRORS:
     1. [DONE] (wall issue) Doesn't block wall if your y velocity is 0 (only moving horizontally on the ground), this is due to our condition to self.wall=0 only when self.vy==0 (so can walk through walls)
     2. [SORTA DONE] Door doesn't detect players (in player class, it says that it does'nt exist in self.players)
-    3. 1 of the GPA objects still remains!!!
-    
+    3. [DONE] 1 of the GPA objects still remains!!!
+    4. Music starts playing anew at every level
     
     Suggestions:
         1. Want to implement a time delay between touching the obstacle and restarting
@@ -18,9 +18,14 @@
         7. [DONE] Add background images
         8. Add feature (unity) for final level
         9. [SORTA DONE] Design Menu (Play game + Instructions)
+        10. Ensure counters don't go to negative
         
     Doubts:
         1. Is it fine if we use Mario code
+        
+    Ideas:
+        1. For gate, inherit from platform
+        2. For moving platform, when player lands on it, give him the same velocity. Set button positions which make the platform move (platform.m=1)
     
 As of now, we have 2 players (usual) and we have stars (which are supposed to be GPA +0.4) and 1 pikachu (which is the FAIL = restart and -0.5 GPA), and a counter of GPA.
 
@@ -53,14 +58,17 @@ class Creature:
     def gravity(self):
         if self.y+self.r < self.g: #If character is above ground
             self.vy += 0.25 #Give character velocity in positive y-axis (falling down)
-            if self.vy > self.g - (self.y+self.r):
-                self.vy = self.g - (self.y+self.r) #To ensure character stops at ground EXACTLY (and not below)
+            if self.vy > self.g - (self.y+self.h//2):
+                self.vy = self.g - (self.y+self.h//2) #To ensure character stops at ground EXACTLY (and not below)
         else:
             self.vy = 0 #-10 (else we keep velocity in y as 0)
             
         for p in game.platforms:
-            if self.x in range(p.x, p.x+p.w) and self.y+self.r <= p.y: #(if character is above the platform AND within the width of platform)
+            if self.x+self.w//2 in range(p.x, p.x+p.w) and self.y+self.h < p.y: #(if character is above the platform AND within the width of platform)
                 self.g = p.y #Turn the ground 
+            # if self.y+self.h < p.y:
+            #     self.y=p.y-self.h-3
+                self.vy=0
                 break
             else:
                 self.g = game.g #Else we stick to original ground
@@ -87,7 +95,7 @@ class Creature:
         elif self.vx != 0: #If the character is moving, then we cycle through the frames
             self.f = (self.f+0.3)%self.F
         else:
-            self.f = 3 #Else we keep the same (stationary) frame (ONLY WORKS FOR MARIO TEMPLATE SINCE f=3 IS STATIONARY THERE)
+            self.f = 4 #Else we keep the same (stationary) frame (ONLY WORKS FOR MARIO TEMPLATE SINCE f=3 IS STATIONARY THERE)
             
         #if self.dir >0 and isinstance (self, Trip):
         
@@ -566,11 +574,15 @@ class Platform:
         self.y=y
         self.w=w
         self.h=h
+        #self.m=0 #Flag to chech whether it's a stationary platform (m=0) or a moving one (m=1)
         self.img = loadImage(path+"/images/platform.png")
         
     def display(self):
         rect(self.x,self.y,self.w,self.h)
         #image(self.img,self.x,self.y,self.w,self.h)
+        
+    # def update(self):
+    #     if 
         
 class Door:
     def __init__(self,x,y,w,h):
@@ -605,7 +617,8 @@ class Game:
         self.winSound = player.loadFile(path+"/sounds/Congratulations!.mp3")
         
         self.music = player.loadFile(path+"/sounds/music.mp3")
-        self.music.play()
+        if self.l==1:
+            self.music.play()
         
         self.BGImg=loadImage(path+"/images/BG"+str(self.l)+".jpg")
         
@@ -644,8 +657,8 @@ class Game:
             self.lvl3()"""
      
     def lvl1(self):
-        self.p1 = Player1(50,668,35,self.g,"mario.png",100,70,11) #Player-1
-        self.p2 = Player2(100,668,35,self.g,"mario.png",100,70,11) #Player-2
+        self.p1 = Player1(50,668,22,self.g,"Player1.png",52,70,8) #Player-1
+        self.p2 = Player2(100,668,22,self.g,"Player1.png",52,70,8) #Player-2
         
         self.players.append(self.p1)
         self.players.append(self.p2)
@@ -672,7 +685,7 @@ class Game:
         self.CM.append(rCM(300,250,20,self.g,"Money.png",40,40,1,300,500,1))
         self.CM.append(rCM(300,225,20,self.g,"Money.png",40,40,1,300,500,1))
         
-        self.oStarbucks.append(Quiz(100,100,20,self.g,"Coffee.png",30,40,1,100,500))
+        self.oStarbucks.append(Coffee(100,105,20,self.g,"Coffee.png",30,40,1,100,500))
         
         #self.oQuiz.append(Quiz(200,80,20,self.g,"Quiz.png",50,50,1,100,300)) #Creating quiz objects
                 
@@ -718,8 +731,8 @@ class Game:
         #self.oFail.append(Fail(50,100,42,self.g,"Fail.png",50,50,1,50,450)) #Creating Fail objects"""  
         
     def lvl2(self):
-        self.p1 = Player1(50,668,35,self.g,"mario.png",100,70,11) #Player-1
-        self.p2 = Player2(100,668,35,self.g,"mario.png",100,70,11) #Player-2
+        self.p1 = Player1(50,668,22,self.g,"Player1.png",52,70,8) #Player-1
+        self.p2 = Player2(100,668,22,self.g,"Player1.png",52,70,8) #Player-2
         
         self.players.append(self.p1)
         self.players.append(self.p2)
@@ -733,7 +746,7 @@ class Game:
         self.platforms.append(Platform(-299,0,300,768)) #WALLS
         self.platforms.append(Platform(1439,0,300,768))
                 
-        self.platforms.append(Platform(0,718,1440,50)) #Ground
+        #self.platforms.append(Platform(0,718,1440,50)) #Ground
         
         self.door=Door(400,50,50,80) #Door
     
@@ -754,8 +767,8 @@ class Game:
         #self.oFail.append(Fail(50,100,42,self.g,"Fail.png",50,50,1,50,450)) #Creating Fail objects
         
     def lvl3(self):
-        self.p1 = Player1(50,668,35,self.g,"mario.png",100,70,11) #Player-1
-        self.p2 = Player2(100,668,35,self.g,"mario.png",100,70,11) #Player-2
+        self.p1 = Player1(50,668,22,self.g,"Player1.png",52,70,8) #Player-1
+        self.p2 = Player2(100,668,22,self.g,"Player1.png",52,70,8) #Player-2
         
         self.players.append(self.p1)
         self.players.append(self.p2)
@@ -769,7 +782,7 @@ class Game:
         self.platforms.append(Platform(-299,0,300,768)) #WALLS
         self.platforms.append(Platform(1439,0,300,768))
                 
-        self.platforms.append(Platform(0,718,1440,50)) #Ground
+        #self.platforms.append(Platform(0,718,1440,50)) #Ground
         
         self.door=Door(400,50,50,80) #Door
     
@@ -793,7 +806,7 @@ class Game:
         background(255)
         #image(self.ENDImg,0,0)
         
-    
+    #PRACTICALLY USELESS NOW
     def DelObject(self):
         for i in self.oFail:
             self.oFail.remove(i)
@@ -816,7 +829,7 @@ class Game:
         background(255)
         image(self.instImg,0,-20,1440,768) #INSERT THE SCREENSHOT
         
-    def update(self):
+    def update(self): #LEVEL CHANGE CONDITIONS
         if self.l==1 and self.alive_players==0:
             game.__init__(1440,768,718,2)
             game.state="play"
@@ -828,6 +841,7 @@ class Game:
             game.__init__(1440,768,718,3)
             game.state="play"
         elif self.l==3 and self.alive_players==0:
+            game.music.pause()
             #background(255)
             #image(self.ENDImg,0,0)
             #game.__init__(1440,768,718,4)
@@ -918,7 +932,7 @@ class Game:
         #fill(255,255,0)
         #rect(30,30,min(100,self.mario.CMCnt*10),20)
         
-game = Game(1440,768,718,3) #Window dimensions and the ground value
+game = Game(1440,768,718,1) #Window dimensions and the ground value
 
 def setup():
     size(game.w, game.h)
@@ -975,9 +989,10 @@ def draw():
         background(255)
         #image(myMovie, 0, 0)
         image(game.ENDImg,0,0)
+        game.winSound.play()
         game.music.pause()
         #game.winSound.rewind()
-        game.winSound.play()
+        #game.winSound.play()
             
     """elif game.pause == False:
         background(0)
